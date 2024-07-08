@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Zombie Shooter Game</title>
+    <style>
+        canvas {
+            background-color: rgb(77, 48, 12);
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const context = canvas.getContext('2d');
+
+    const player = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        size: 10,
+        color: 'black',
+        speed: 5,
+        hp: 10
+    };
+
+    const zombies = [];
+    const bullets = [];
+    const keys = {};
+    let mouseX = 0;
+    let mouseY = 0;
+
+    function createZombie() {
+        const size = 10;
+        const zombie = {
+            x: Math.random() * (canvas.width - size),
+            y: Math.random() * (canvas.height - size),
+            size: size,
+            color: 'green',
+            speed: 1
+        };
+        zombies.push(zombie);
+    }
+
+    function update() {
+        // Move player
+        if (keys['w']) player.y -= player.speed;
+        if (keys['s']) player.y += player.speed;
+        if (keys['a']) player.x -= player.speed;
+        if (keys['d']) player.x += player.speed;
+
+        // Keep player within bounds
+        player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+        player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+        // Move zombies
+        zombies.forEach(zombie => {
+            const angle = Math.atan2(player.y - zombie.y, player.x - zombie.x);
+            zombie.x += Math.cos(angle) * zombie.speed;
+            zombie.y += Math.sin(angle) * zombie.speed;
+
+            // Check collision with player
+            if (Math.hypot(zombie.x - player.x, zombie.y - player.y) < zombie.size + player.size) {
+                player.hp -= 1;
+                zombies.splice(zombies.indexOf(zombie), 1);
+            }
+        });
+
+        // Move bullets
+        bullets.forEach((bullet, index) => {
+            bullet.x += bullet.dx;
+            bullet.y += bullet.dy;
+
+            // Remove bullets that are off screen
+            if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
+                bullets.splice(index, 1);
+            }
+
+            // Check bullet collision with zombies
+            zombies.forEach((zombie, zombieIndex) => {
+                if (Math.hypot(bullet.x - zombie.x, bullet.y - zombie.y) < zombie.size + bullet.size) {
+                    zombies.splice(zombieIndex, 1);
+                    bullets.splice(index, 1);
+                }
+            });
+        });
+
+        // End game if HP is 0
+        if (player.hp <= 0) {
+            alert('Game Over');
+            document.location.reload();
+        }
+    }
+
+    function draw() {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw player
+        context.fillStyle = player.color;
+        context.fillRect(player.x, player.y, player.size, player.size);
+
+        // Draw zombies
+        zombies.forEach(zombie => {
+            context.fillStyle = zombie.color;
+            context.fillRect(zombie.x, zombie.y, zombie.size, zombie.size);
+        });
+
+        // Draw bullets
+        bullets.forEach(bullet => {
+            context.fillStyle = bullet.color;
+            context.fillRect(bullet.x, bullet.y, bullet.size, bullet.size);
+        });
+
+        // Draw HP bar
+        context.fillStyle = 'red';
+        context.fillRect(10, 10, player.hp * 10, 20);
+
+        requestAnimationFrame(draw);
+    }
+
+    function shoot() {
+        const angle = Math.atan2(mouseY - (player.y + player.size / 2), mouseX - (player.x + player.size / 2));
+        const bullet = {
+            x: player.x + player.size / 2,
+            y: player.y + player.size / 2,
+            size: 5,
+            color: 'blue',
+            speed: 7,
+            dx: Math.cos(angle) * 7,
+            dy: Math.sin(angle) * 7
+        };
+
+        bullets.push(bullet);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        keys[e.key] = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+        keys[e.key] = false;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX - canvas.getBoundingClientRect().left;
+        mouseY = e.clientY - canvas.getBoundingClientRect().top;
+    });
+
+    canvas.addEventListener('click', (e) => {
+        shoot();
+    });
+
+    // Spawn a new zombie every 2 seconds
+    setInterval(createZombie, 2000);
+
+    function gameLoop() {
+        update();
+        draw();
+    }
+
+    setInterval(gameLoop, 1000 / 60);
+</script>
+</body>
+</html>
